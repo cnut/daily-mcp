@@ -14,7 +14,7 @@ logger = get_logger("db")
 class Database:
     """SQLite database wrapper for daily-mcp."""
 
-    def __init__(self, db_path: str | None = None) -> None:
+    def __init__(self, db_path: str | Path | None = None) -> None:
         """
         Initialize database connection.
 
@@ -24,9 +24,9 @@ class Database:
         if db_path is None:
             data_dir = Path.home() / ".daily-mcp"
             data_dir.mkdir(parents=True, exist_ok=True)
-            db_path = str(data_dir / "data.db")
+            db_path = data_dir / "data.db"
 
-        self.db_path = db_path
+        self.db_path = str(db_path)
         self.conn: sqlite3.Connection | None = None
 
     def init(self) -> None:

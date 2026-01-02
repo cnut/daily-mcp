@@ -103,11 +103,45 @@
 
 ## 📦 安装
 
-bla bla
+```bash
+# 使用 pip 安装
+pip install daily-mcp
+
+# 或从源码安装
+git clone https://github.com/your-username/daily-mcp.git
+cd daily-mcp
+pip install -e .
+```
 
 ## ⚙️ 配置
 
-bla bla
+在 Claude Desktop 配置文件中添加：
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "daily-mcp": {
+      "command": "daily-mcp"
+    }
+  }
+}
+```
+
+或使用 uvx（推荐，无需预先安装）：
+
+```json
+{
+  "mcpServers": {
+    "daily-mcp": {
+      "command": "uvx",
+      "args": ["daily-mcp"]
+    }
+  }
+}
+```
 
 ## 🗂️ 数据存储
 

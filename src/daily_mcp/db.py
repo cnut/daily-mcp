@@ -54,7 +54,7 @@ class Database:
                 category TEXT,
                 source TEXT,
                 note TEXT,
-                date TEXT NOT NULL,
+                datetime TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -67,7 +67,7 @@ class Database:
                 content TEXT NOT NULL,
                 topic TEXT,
                 status TEXT DEFAULT 'pending',
-                due_date TEXT,
+                due_datetime TEXT,
                 completed_at TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -82,7 +82,7 @@ class Database:
                 value TEXT NOT NULL,
                 unit TEXT,
                 note TEXT,
-                date TEXT NOT NULL,
+                datetime TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)

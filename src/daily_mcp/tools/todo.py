@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from daily_mcp.logging import get_logger
@@ -17,7 +17,7 @@ def add_todo(
     db: Database,
     content: str,
     topic: str | None = None,
-    due_date: str | None = None,
+    due_datetime: str | None = None,
 ) -> str:
     """
     Add a todo item.
@@ -26,7 +26,7 @@ def add_todo(
         db: Database instance
         content: Todo content
         topic: Optional topic/project
-        due_date: Optional due date in YYYY-MM-DD format
+        due_datetime: Optional due datetime in YYYY-MM-DD HH:MM:SS format
 
     Returns:
         Confirmation message
@@ -35,18 +35,18 @@ def add_todo(
 
     db.execute(
         """
-        INSERT INTO todo (content, topic, due_date)
+        INSERT INTO todo (content, topic, due_datetime)
         VALUES (?, ?, ?)
         """,
-        (content, topic, due_date),
+        (content, topic, due_datetime),
     )
     db.commit()
 
     result = f"Added todo: {content}"
     if topic:
         result += f", topic: {topic}"
-    if due_date:
-        result += f", due: {due_date}"
+    if due_datetime:
+        result += f", due: {due_datetime}"
     return result
 
 
@@ -136,12 +136,12 @@ def list_todos(
 
     rows = db.fetchall(
         f"""
-        SELECT id, content, topic, status, due_date, created_at
+        SELECT id, content, topic, status, due_datetime, created_at
         FROM todo
         WHERE {where_clause}
         ORDER BY
-            CASE WHEN due_date IS NOT NULL THEN 0 ELSE 1 END,
-            due_date ASC,
+            CASE WHEN due_datetime IS NOT NULL THEN 0 ELSE 1 END,
+            due_datetime ASC,
             created_at DESC
         """,
         tuple(params),
@@ -150,12 +150,12 @@ def list_todos(
     if not rows:
         return "No todos found"
 
-    today = date.today()
+    now = datetime.now()
     output_lines = ["Todo List:", ""]
     overdue_count = 0
 
     for row in rows:
-        id_, content, topic_, status_, due_date_, _created_at = row
+        id_, content, topic_, status_, due_datetime_, _created_at = row
         line = f"  [{id_}] {content}"
 
         if topic_:
@@ -164,13 +164,13 @@ def list_todos(
         if status_ == "completed":
             line = f"  [x] {line[4:]}"
         else:
-            if due_date_:
-                due = datetime.strptime(due_date_, "%Y-%m-%d").date()
-                if due < today:
-                    line += f" OVERDUE({due_date_})"
+            if due_datetime_:
+                due = datetime.strptime(due_datetime_, "%Y-%m-%d %H:%M:%S")
+                if due < now:
+                    line += f" OVERDUE({due_datetime_})"
                     overdue_count += 1
                 else:
-                    line += f" (due: {due_date_})"
+                    line += f" (due: {due_datetime_})"
             line = f"  [ ] {line[4:]}"
 
         output_lines.append(line)

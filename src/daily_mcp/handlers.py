@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path  # noqa: TC003 - used at runtime for function signatures
 from typing import TYPE_CHECKING, Any
 
 from mcp.types import (
@@ -20,7 +21,7 @@ from daily_mcp.logging import get_logger
 from daily_mcp.prompts import PROMPTS
 from daily_mcp.resources import get_daily_summary, get_weekly_summary
 from daily_mcp.schemas import (
-    AddDailyLog,
+    AddDiary,
     AddTodo,
     CompleteTodo,
     DailyTools,
@@ -30,9 +31,9 @@ from daily_mcp.schemas import (
     RecordExpense,
     RecordHealth,
     RecordIncome,
-    SearchDailyLog,
+    SearchDiary,
 )
-from daily_mcp.tools import daily_log, finance, health, todo
+from daily_mcp.tools import diary, finance, health, todo
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -44,7 +45,7 @@ if TYPE_CHECKING:
 logger = get_logger("handlers")
 
 
-def register_tools(server: Server, db: Database) -> None:
+def register_tools(server: Server, db: Database, diary_path: Path) -> None:
     """Register all tool handlers."""
 
     @server.list_tools()
@@ -69,7 +70,7 @@ def register_tools(server: Server, db: Database) -> None:
             ),
             Tool(
                 name=DailyTools.ADD_TODO,
-                description="Add a todo item with optional topic and due date.",
+                description="Add a todo item with optional topic and due datetime.",
                 inputSchema=AddTodo.model_json_schema(),
             ),
             Tool(
@@ -93,14 +94,14 @@ def register_tools(server: Server, db: Database) -> None:
                 inputSchema=QueryHealth.model_json_schema(),
             ),
             Tool(
-                name=DailyTools.ADD_DAILY_LOG,
-                description="Add a free-form daily log entry.",
-                inputSchema=AddDailyLog.model_json_schema(),
+                name=DailyTools.ADD_DIARY,
+                description="Add a free-form diary entry with optional tags.",
+                inputSchema=AddDiary.model_json_schema(),
             ),
             Tool(
-                name=DailyTools.SEARCH_DAILY_LOG,
-                description="Search daily logs by keyword or date range.",
-                inputSchema=SearchDailyLog.model_json_schema(),
+                name=DailyTools.SEARCH_DIARY,
+                description="Search diary entries by keyword, tag, or datetime range.",
+                inputSchema=SearchDiary.model_json_schema(),
             ),
         ]
 
@@ -111,7 +112,7 @@ def register_tools(server: Server, db: Database) -> None:
         logger.debug("Arguments: %s", arguments)
 
         try:
-            result = _dispatch_tool(db, name, arguments)
+            result = _dispatch_tool(db, diary_path, name, arguments)
             logger.debug("Tool result: %s", result[:200] if len(result) > 200 else result)
             return [TextContent(type="text", text=result)]
         except Exception as e:
@@ -119,30 +120,65 @@ def register_tools(server: Server, db: Database) -> None:
             return [TextContent(type="text", text=f"Error: {e!s}")]
 
 
-def _dispatch_tool(db: Database, name: str, arguments: dict[str, Any]) -> str:
+def _dispatch_tool(db: Database, diary_path: Path, name: str, arguments: dict[str, Any]) -> str:
     """Dispatch tool call to appropriate handler."""
-    handlers: dict[str, Callable[[Database, dict[str, Any]], str]] = {
-        DailyTools.RECORD_EXPENSE: lambda d, a: finance.record_expense(d, **a),
-        DailyTools.RECORD_INCOME: lambda d, a: finance.record_income(d, **a),
-        DailyTools.QUERY_FINANCE: lambda d, a: finance.query_finance(d, a.get("sql", "")),
-        DailyTools.ADD_TODO: lambda d, a: todo.add_todo(d, **a),
-        DailyTools.COMPLETE_TODO: lambda d, a: todo.complete_todo(d, **a),
-        DailyTools.LIST_TODOS: lambda d, a: todo.list_todos(d, **a),
-        DailyTools.RECORD_HEALTH: lambda d, a: health.record_health(d, **a),
-        DailyTools.QUERY_HEALTH: lambda d, a: health.query_health(d, **a),
-        DailyTools.ADD_DAILY_LOG: lambda d, a: daily_log.add_daily_log(d, **a),
-        DailyTools.SEARCH_DAILY_LOG: lambda d, a: daily_log.search_daily_log(d, **a),
+    handlers: dict[str, Callable[[], str]] = {
+        DailyTools.RECORD_EXPENSE: lambda: finance.record_expense(
+            db,
+            amount=arguments["amount"],
+            category=arguments["category"],
+            note=arguments.get("note"),
+            datetime_str=arguments.get("datetime"),
+        ),
+        DailyTools.RECORD_INCOME: lambda: finance.record_income(
+            db,
+            amount=arguments["amount"],
+            source=arguments["source"],
+            note=arguments.get("note"),
+            datetime_str=arguments.get("datetime"),
+        ),
+        DailyTools.QUERY_FINANCE: lambda: finance.query_finance(db, arguments.get("sql", "")),
+        DailyTools.ADD_TODO: lambda: todo.add_todo(
+            db,
+            content=arguments["content"],
+            topic=arguments.get("topic"),
+            due_datetime=arguments.get("due_datetime"),
+        ),
+        DailyTools.COMPLETE_TODO: lambda: todo.complete_todo(db, **arguments),
+        DailyTools.LIST_TODOS: lambda: todo.list_todos(db, **arguments),
+        DailyTools.RECORD_HEALTH: lambda: health.record_health(
+            db,
+            metric_type=arguments["metric_type"],
+            value=arguments["value"],
+            unit=arguments.get("unit"),
+            note=arguments.get("note"),
+            datetime_str=arguments.get("datetime"),
+        ),
+        DailyTools.QUERY_HEALTH: lambda: health.query_health(db, **arguments),
+        DailyTools.ADD_DIARY: lambda: diary.add_diary(
+            diary_path,
+            content=arguments["content"],
+            tags=arguments.get("tags"),
+            datetime_str=arguments.get("datetime"),
+        ),
+        DailyTools.SEARCH_DIARY: lambda: diary.search_diary(
+            diary_path,
+            keyword=arguments.get("keyword"),
+            tag=arguments.get("tag"),
+            start_datetime=arguments.get("start_datetime"),
+            end_datetime=arguments.get("end_datetime"),
+        ),
     }
 
     handler = handlers.get(name)
     if handler:
-        return handler(db, arguments)
+        return handler()
 
     logger.warning("Unknown tool: %s", name)
     return f"Unknown tool: {name}"
 
 
-def register_resources(server: Server, db: Database) -> None:
+def register_resources(server: Server, db: Database, diary_path: Path) -> None:
     """Register all resource handlers."""
 
     @server.list_resources()
@@ -168,22 +204,22 @@ def register_resources(server: Server, db: Database) -> None:
     async def read_resource(uri: AnyUrl) -> str:
         """Read a resource by URI."""
         logger.debug("Reading resource: %s", uri)
-        return _resolve_resource(db, str(uri))
+        return _resolve_resource(db, diary_path, str(uri))
 
 
-def _resolve_resource(db: Database, uri_str: str) -> str:
+def _resolve_resource(db: Database, diary_path: Path, uri_str: str) -> str:
     """Resolve resource URI to content."""
     if uri_str == "daily://summary/today":
-        return get_daily_summary(db)
+        return get_daily_summary(db, diary_path)
     if uri_str == "daily://summary/weekly":
-        return get_weekly_summary(db)
+        return get_weekly_summary(db, diary_path)
 
     # Support date-specific summaries: daily://summary/2024-01-15
     if uri_str.startswith("daily://summary/"):
         date_part = uri_str.replace("daily://summary/", "")
         try:
             datetime.strptime(date_part, "%Y-%m-%d")
-            return get_daily_summary(db, date_part)
+            return get_daily_summary(db, diary_path, date_part)
         except ValueError:
             pass
 

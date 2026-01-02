@@ -6,11 +6,12 @@
 daily-mcp [OPTIONS]
 
 Options:
-  -d, --db-path PATH   数据库文件路径 (默认: ~/.daily-mcp/data.db)
-  -v, --verbose        日志级别 (-v: INFO, -vv: DEBUG)
-  --log-file PATH      日志输出文件
-  --version            显示版本号
-  --help               显示帮助信息
+  -d, --db-path PATH      数据库文件路径 (默认: ~/.daily-mcp/data.db)
+  --diary-path PATH       日记目录路径 (默认: ~/.daily-mcp/diary)
+  -v, --verbose           日志级别 (-v: INFO, -vv: DEBUG)
+  --log-file PATH         日志输出文件
+  --version               显示版本号
+  --help                  显示帮助信息
 ```
 
 ## Claude Desktop 配置
@@ -47,14 +48,14 @@ Options:
 }
 ```
 
-### 自定义数据库路径
+### 自定义数据库和日记路径
 
 ```json
 {
   "mcpServers": {
     "daily-mcp": {
       "command": "daily-mcp",
-      "args": ["--db-path", "/path/to/my-data.db"]
+      "args": ["--db-path", "/path/to/my-data.db", "--diary-path", "/path/to/diary"]
     }
   }
 }
@@ -80,7 +81,7 @@ Options:
 ```
 ~/.daily-mcp/
 ├── data.db          # SQLite 数据库（财务、待办、健康）
-└── logs/            # 日志文件目录
+└── diary/           # 日记文件目录
     ├── 2024-01-15.json
     ├── 2024-01-16.json
     └── ...

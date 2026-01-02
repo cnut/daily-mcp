@@ -56,7 +56,7 @@ pip install daily-mcp
 | **💰 财务** | 收支记录、SQL 查询 | "午餐 35 元"、"本月支出统计" |
 | **✅ 待办** | 任务管理、主题分组 | "添加待办"、"完成任务" |
 | **🏥 健康** | 血压/心率/体重等 | "血压 120/80"、"睡眠 7 小时" |
-| **📝 日志** | 自由记录、搜索 | "今天跑步 5km"、"搜索火锅" |
+| **📝 日记** | 自由记录、搜索、标签 | "今天跑步 5km"、"搜索火锅" |
 
 ## 🔌 MCP 支持
 
@@ -71,10 +71,11 @@ pip install daily-mcp
 ```bash
 daily-mcp [OPTIONS]
 
-  -d, --db-path PATH   数据库路径 (默认: ~/.daily-mcp/data.db)
-  -v, --verbose        日志级别 (-v: INFO, -vv: DEBUG)
-  --log-file PATH      日志文件
-  --version            版本号
+  -d, --db-path PATH      数据库路径 (默认: ~/.daily-mcp/data.db)
+  --diary-path PATH       日记目录路径 (默认: ~/.daily-mcp/diary)
+  -v, --verbose           日志级别 (-v: INFO, -vv: DEBUG)
+  --log-file PATH         日志文件
+  --version               版本号
 ```
 
 ## 📚 文档
@@ -88,7 +89,7 @@ daily-mcp [OPTIONS]
 ## 🛠️ 开发
 
 ```bash
-git clone https://github.com/peng/daily-mcp.git
+git clone https://github.com/cnut/daily-mcp.git
 cd daily-mcp
 pip install -e ".[dev]"
 

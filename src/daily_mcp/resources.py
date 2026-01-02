@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from pathlib import Path  # noqa: TC003 - used at runtime for function signatures
 from typing import TYPE_CHECKING, Any
 
 from daily_mcp.logging import get_logger
-from daily_mcp.tools import daily_log
+from daily_mcp.tools import diary
 
 if TYPE_CHECKING:
     from daily_mcp.db import Database
@@ -71,31 +72,34 @@ def _format_health_section(health_rows: list[Any]) -> list[str]:
     return lines
 
 
-def _format_daily_log_section(target_date: str) -> list[str]:
-    """Format daily log data into summary lines."""
-    logs = daily_log._load_log(target_date)
-    if not logs:
-        return ["📝 Daily Log: No entries"]
+def _format_diary_section(diary_path: Path, target_date: str) -> list[str]:
+    """Format diary data into summary lines."""
+    entries = diary._load_diary(diary_path, target_date)
+    if not entries:
+        return ["📝 Diary: No entries"]
 
-    lines = [f"📝 Daily Log: {len(logs)} entries"]
-    for log in logs[:3]:  # Show first 3 entries
-        content = log["content"]
+    lines = [f"📝 Diary: {len(entries)} entries"]
+    for entry in entries[:3]:  # Show first 3 entries
+        content = entry["content"]
         preview = content[:50] + "..." if len(content) > 50 else content
-        time_str = log.get("time", "")
-        lines.append(f"  [{time_str}] {preview}")
+        datetime_str = entry.get("datetime", entry.get("time", ""))
+        # Show only time part if datetime contains date
+        display_time = datetime_str.split(" ")[-1] if " " in datetime_str else datetime_str
+        lines.append(f"  [{display_time}] {preview}")
 
-    if len(logs) > 3:
-        lines.append(f"  ... and {len(logs) - 3} more entries")
+    if len(entries) > 3:
+        lines.append(f"  ... and {len(entries) - 3} more entries")
 
     return lines
 
 
-def get_daily_summary(db: Database, date: str | None = None) -> str:
+def get_daily_summary(db: Database, diary_path: Path, date: str | None = None) -> str:
     """
     Generate a daily summary for a specific date.
 
     Args:
         db: Database instance
+        diary_path: Directory containing diary files
         date: Date in YYYY-MM-DD format, defaults to today
 
     Returns:
@@ -110,7 +114,7 @@ def get_daily_summary(db: Database, date: str | None = None) -> str:
     finance_rows = db.fetchall(
         """
         SELECT type, SUM(amount) as total, COUNT(*) as count
-        FROM finance WHERE date = ? GROUP BY type
+        FROM finance WHERE date(datetime) = ? GROUP BY type
         """,
         (target_date,),
     )
@@ -130,24 +134,25 @@ def get_daily_summary(db: Database, date: str | None = None) -> str:
     health_rows = db.fetchall(
         """
         SELECT metric_type, value, unit FROM health
-        WHERE date = ? ORDER BY metric_type
+        WHERE date(datetime) = ? ORDER BY metric_type
         """,
         (target_date,),
     )
     lines.extend(_format_health_section(health_rows))
 
-    # Daily log summary
-    lines.extend(_format_daily_log_section(target_date))
+    # Diary summary
+    lines.extend(_format_diary_section(diary_path, target_date))
 
     return "\n".join(lines)
 
 
-def get_weekly_summary(db: Database) -> str:
+def get_weekly_summary(db: Database, diary_path: Path) -> str:
     """
     Generate a weekly summary (last 7 days).
 
     Args:
         db: Database instance
+        diary_path: Directory containing diary files
 
     Returns:
         Formatted weekly summary
@@ -170,8 +175,8 @@ def get_weekly_summary(db: Database) -> str:
     # Health trends
     lines.extend(_build_weekly_health(db, start_str, end_str))
 
-    # Daily log count
-    lines.extend(_build_weekly_logs(start_str, end_str))
+    # Diary count
+    lines.extend(_build_weekly_diary(diary_path, start_str, end_str))
 
     return "\n".join(lines)
 
@@ -185,7 +190,7 @@ def _build_weekly_finance(db: Database, start_str: str, end_str: str) -> list[st
     finance_rows = db.fetchall(
         """
         SELECT type, SUM(amount) as total, COUNT(*) as count
-        FROM finance WHERE date >= ? AND date <= ? GROUP BY type
+        FROM finance WHERE date(datetime) >= ? AND date(datetime) <= ? GROUP BY type
         """,
         (start_str, end_str),
     )
@@ -207,7 +212,7 @@ def _build_weekly_finance(db: Database, start_str: str, end_str: str) -> list[st
     category_rows = db.fetchall(
         """
         SELECT category, SUM(amount) as total FROM finance
-        WHERE type = 'expense' AND date >= ? AND date <= ?
+        WHERE type = 'expense' AND date(datetime) >= ? AND date(datetime) <= ?
         GROUP BY category ORDER BY total DESC LIMIT 5
         """,
         (start_str, end_str),
@@ -248,7 +253,7 @@ def _build_weekly_health(db: Database, start_str: str, end_str: str) -> list[str
     health_rows = db.fetchall(
         """
         SELECT metric_type, COUNT(*) as count, MIN(value) as min_val, MAX(value) as max_val
-        FROM health WHERE date >= ? AND date <= ? GROUP BY metric_type
+        FROM health WHERE date(datetime) >= ? AND date(datetime) <= ? GROUP BY metric_type
         """,
         (start_str, end_str),
     )
@@ -264,14 +269,13 @@ def _build_weekly_health(db: Database, start_str: str, end_str: str) -> list[str
     return lines
 
 
-def _build_weekly_logs(start_str: str, end_str: str) -> list[str]:
-    """Build weekly logs section."""
-    log_count = 0
-    log_dir = daily_log._get_log_dir()
-    for log_file in log_dir.glob("*.json"):
-        file_date = log_file.stem
+def _build_weekly_diary(diary_path: Path, start_str: str, end_str: str) -> list[str]:
+    """Build weekly diary section."""
+    entry_count = 0
+    for diary_file in diary_path.glob("*.json"):
+        file_date = diary_file.stem
         if start_str <= file_date <= end_str:
-            logs = daily_log._load_log(file_date)
-            log_count += len(logs)
+            entries = diary._load_diary(diary_path, file_date)
+            entry_count += len(entries)
 
-    return [f"📝 Daily Logs: {log_count} entries this week"]
+    return [f"📝 Diary: {entry_count} entries this week"]

@@ -20,14 +20,14 @@ class TestRecordExpense:
         assert "taxi" in result
 
     def test_record_expense_with_date(self, temp_db: Database) -> None:
-        """Test expense recording with specific date."""
+        """Test expense recording with specific datetime."""
         result = finance.record_expense(
-            temp_db, amount=200.0, category="shopping", date="2024-01-15"
+            temp_db, amount=200.0, category="shopping", datetime_str="2024-01-15 10:30:00"
         )
         assert "Recorded expense" in result
 
         # Verify in database
-        rows = temp_db.fetchall("SELECT * FROM finance WHERE date = '2024-01-15'")
+        rows = temp_db.fetchall("SELECT * FROM finance WHERE datetime = '2024-01-15 10:30:00'")
         assert len(rows) == 1
 
 

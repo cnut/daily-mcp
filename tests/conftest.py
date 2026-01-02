@@ -20,14 +20,8 @@ def temp_db() -> Database:
 
 
 @pytest.fixture
-def temp_log_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Create a temporary log directory for testing."""
-    log_dir = tmp_path / "logs"
-    log_dir.mkdir()
-
-    # Patch the log directory
-    def mock_get_log_dir() -> Path:
-        return log_dir
-
-    monkeypatch.setattr("daily_mcp.tools.daily_log._get_log_dir", mock_get_log_dir)
-    return log_dir
+def temp_diary_dir(tmp_path: Path) -> Path:
+    """Create a temporary diary directory for testing."""
+    diary_dir = tmp_path / "diary"
+    diary_dir.mkdir()
+    return diary_dir

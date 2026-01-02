@@ -29,9 +29,9 @@ class DailyTools(str, Enum):
     RECORD_HEALTH = "record_health"
     QUERY_HEALTH = "query_health"
 
-    # Daily Log
-    ADD_DAILY_LOG = "add_daily_log"
-    SEARCH_DAILY_LOG = "search_daily_log"
+    # Diary
+    ADD_DIARY = "add_diary"
+    SEARCH_DIARY = "search_diary"
 
 
 # =============================================================================
@@ -48,10 +48,10 @@ class RecordExpense(BaseModel):
         description="Expense category (e.g., food, transport, shopping, entertainment)",
     )
     note: str | None = Field(None, description="Optional note for this expense")
-    date: str | None = Field(
+    datetime: str | None = Field(
         None,
-        description="Date in YYYY-MM-DD format, defaults to today",
-        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Datetime in YYYY-MM-DD HH:MM:SS format, defaults to now",
+        pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$",
     )
 
 
@@ -64,10 +64,10 @@ class RecordIncome(BaseModel):
         description="Income source (e.g., salary, bonus, investment, freelance)",
     )
     note: str | None = Field(None, description="Optional note for this income")
-    date: str | None = Field(
+    datetime: str | None = Field(
         None,
-        description="Date in YYYY-MM-DD format, defaults to today",
-        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Datetime in YYYY-MM-DD HH:MM:SS format, defaults to now",
+        pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$",
     )
 
 
@@ -78,7 +78,7 @@ class QueryFinance(BaseModel):
         ...,
         description=(
             "SQL SELECT query on the 'finance' table. "
-            "Columns: id, type, amount, category, source, note, date, created_at"
+            "Columns: id, type, amount, category, source, note, datetime, created_at"
         ),
     )
 
@@ -96,10 +96,10 @@ class AddTodo(BaseModel):
         None,
         description="Topic/Project category (e.g., work, personal, fitness, learning)",
     )
-    due_date: str | None = Field(
+    due_datetime: str | None = Field(
         None,
-        description="Due date in YYYY-MM-DD format",
-        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Due datetime in YYYY-MM-DD HH:MM:SS format",
+        pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$",
     )
 
 
@@ -155,10 +155,10 @@ class RecordHealth(BaseModel):
         description="Unit (optional, defaults based on metric type)",
     )
     note: str | None = Field(None, description="Optional note")
-    date: str | None = Field(
+    datetime: str | None = Field(
         None,
-        description="Date in YYYY-MM-DD format, defaults to today",
-        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Datetime in YYYY-MM-DD HH:MM:SS format, defaults to now",
+        pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$",
     )
 
 
@@ -173,38 +173,43 @@ class QueryHealth(BaseModel):
         None,
         description=(
             "Direct SQL query (overrides other filters). "
-            "Table: 'health', Columns: id, metric_type, value, unit, note, date"
+            "Table: 'health', Columns: id, metric_type, value, unit, note, datetime"
         ),
     )
 
 
 # =============================================================================
-# Daily Log Schemas
+# Diary Schemas
 # =============================================================================
 
 
-class AddDailyLog(BaseModel):
-    """Schema for adding a daily log entry."""
+class AddDiary(BaseModel):
+    """Schema for adding a diary entry."""
 
-    content: str = Field(..., description="Free-form log content")
-    date: str | None = Field(
+    content: str = Field(..., description="Free-form diary content")
+    tags: list[str] | None = Field(
         None,
-        description="Date in YYYY-MM-DD format, defaults to today",
-        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Optional tags for categorization (e.g., ['work', 'meeting'])",
+    )
+    datetime: str | None = Field(
+        None,
+        description="Datetime in YYYY-MM-DD HH:MM:SS format, defaults to now",
+        pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$",
     )
 
 
-class SearchDailyLog(BaseModel):
-    """Schema for searching daily logs."""
+class SearchDiary(BaseModel):
+    """Schema for searching diary entries."""
 
-    keyword: str | None = Field(None, description="Keyword to search in log content")
-    start_date: str | None = Field(
+    keyword: str | None = Field(None, description="Keyword to search in diary content")
+    tag: str | None = Field(None, description="Filter by tag")
+    start_datetime: str | None = Field(
         None,
-        description="Start date in YYYY-MM-DD format (defaults to 30 days ago)",
-        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Start datetime in YYYY-MM-DD HH:MM:SS format (defaults to 30 days ago)",
+        pattern=r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$",
     )
-    end_date: str | None = Field(
+    end_datetime: str | None = Field(
         None,
-        description="End date in YYYY-MM-DD format (defaults to today)",
-        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="End datetime in YYYY-MM-DD HH:MM:SS format (defaults to now)",
+        pattern=r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$",
     )

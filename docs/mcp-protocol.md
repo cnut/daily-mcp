@@ -18,8 +18,8 @@ Daily MCP 完整实现了 [Model Context Protocol](https://modelcontextprotocol.
 | `list_todos` | 列出待办 | `topic`, `status` |
 | `record_health` | 记录健康指标 | `metric_type`, `value`, `unit`, `note` |
 | `query_health` | 查询健康数据 | `metric_type`, `days`, `sql` |
-| `add_daily_log` | 添加日志 | `content`, `date` |
-| `search_daily_log` | 搜索日志 | `keyword`, `start_date`, `end_date` |
+| `add_diary` | 添加日记 | `content`, `datetime`, `tags` |
+| `search_diary` | 搜索日记 | `keyword`, `start_datetime`, `end_datetime` |
 
 ### 工具参数 Schema
 
@@ -30,7 +30,7 @@ class RecordExpense(BaseModel):
     amount: float = Field(..., description="Expense amount", gt=0)
     category: str = Field(..., description="Expense category")
     note: str | None = Field(None, description="Optional note")
-    date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    datetime: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$")
 ```
 
 ---
@@ -67,7 +67,7 @@ class RecordExpense(BaseModel):
 - Blood Pressure: 120/80
 - Weight: 70.5 kg
 
-📝 Daily Logs: 3 entries
+📝 Diary: 3 entries
 ```
 
 ---

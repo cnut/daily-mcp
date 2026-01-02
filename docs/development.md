@@ -10,7 +10,7 @@
 ### 克隆项目
 
 ```bash
-git clone https://github.com/peng/daily-mcp.git
+git clone https://github.com/cnut/daily-mcp.git
 cd daily-mcp
 ```
 
@@ -211,7 +211,7 @@ daily-mcp/
 │       ├── finance.py
 │       ├── todo.py
 │       ├── health.py
-│       └── daily_log.py
+│       └── diary.py
 ├── tests/
 │   ├── conftest.py       # pytest fixtures
 │   └── test_*.py

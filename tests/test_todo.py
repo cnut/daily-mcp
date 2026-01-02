@@ -19,8 +19,8 @@ class TestAddTodo:
         assert "work" in result
 
     def test_add_todo_with_due_date(self, temp_db: Database) -> None:
-        """Test todo with due date."""
-        result = todo.add_todo(temp_db, content="Submit taxes", due_date="2024-04-15")
+        """Test todo with due datetime."""
+        result = todo.add_todo(temp_db, content="Submit taxes", due_datetime="2024-04-15 23:59:59")
         assert "2024-04-15" in result
 
 

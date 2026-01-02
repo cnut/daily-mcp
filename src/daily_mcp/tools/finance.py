@@ -18,7 +18,7 @@ def record_expense(
     amount: float,
     category: str,
     note: str | None = None,
-    date: str | None = None,
+    datetime_str: str | None = None,
 ) -> str:
     """
     Record an expense.
@@ -28,20 +28,20 @@ def record_expense(
         amount: Expense amount
         category: Expense category
         note: Optional note
-        date: Date in YYYY-MM-DD format, defaults to today
+        datetime_str: Datetime in YYYY-MM-DD HH:MM:SS format, defaults to now
 
     Returns:
         Confirmation message
     """
-    expense_date = date or datetime.now().strftime("%Y-%m-%d")
+    expense_datetime = datetime_str or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info("Recording expense: %.2f in %s", amount, category)
 
     db.execute(
         """
-        INSERT INTO finance (type, amount, category, note, date)
+        INSERT INTO finance (type, amount, category, note, datetime)
         VALUES ('expense', ?, ?, ?, ?)
         """,
-        (amount, category, note, expense_date),
+        (amount, category, note, expense_datetime),
     )
     db.commit()
 
@@ -56,7 +56,7 @@ def record_income(
     amount: float,
     source: str,
     note: str | None = None,
-    date: str | None = None,
+    datetime_str: str | None = None,
 ) -> str:
     """
     Record an income.
@@ -66,20 +66,20 @@ def record_income(
         amount: Income amount
         source: Income source
         note: Optional note
-        date: Date in YYYY-MM-DD format, defaults to today
+        datetime_str: Datetime in YYYY-MM-DD HH:MM:SS format, defaults to now
 
     Returns:
         Confirmation message
     """
-    income_date = date or datetime.now().strftime("%Y-%m-%d")
+    income_datetime = datetime_str or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info("Recording income: %.2f from %s", amount, source)
 
     db.execute(
         """
-        INSERT INTO finance (type, amount, source, note, date)
+        INSERT INTO finance (type, amount, source, note, datetime)
         VALUES ('income', ?, ?, ?, ?)
         """,
-        (amount, source, note, income_date),
+        (amount, source, note, income_datetime),
     )
     db.commit()
 

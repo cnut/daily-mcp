@@ -37,7 +37,7 @@ def record_health(
     value: str,
     unit: str | None = None,
     note: str | None = None,
-    date: str | None = None,
+    datetime_str: str | None = None,
 ) -> str:
     """
     Record a health metric.
@@ -48,22 +48,22 @@ def record_health(
         value: Metric value
         unit: Optional unit (has defaults per metric type)
         note: Optional note
-        date: Date in YYYY-MM-DD format, defaults to today
+        datetime_str: Datetime in YYYY-MM-DD HH:MM:SS format, defaults to now
 
     Returns:
         Confirmation message
     """
-    record_date = date or datetime.now().strftime("%Y-%m-%d")
+    record_datetime = datetime_str or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     unit = unit or METRIC_UNITS.get(metric_type, "")
 
     logger.info("Recording health metric: %s = %s", metric_type, value)
 
     db.execute(
         """
-        INSERT INTO health (metric_type, value, unit, note, date)
+        INSERT INTO health (metric_type, value, unit, note, datetime)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (metric_type, value, unit, note, record_date),
+        (metric_type, value, unit, note, record_datetime),
     )
     db.commit()
 
@@ -120,16 +120,16 @@ def _format_health_rows(
         name = METRIC_NAMES.get(metric_type, metric_type)
         output_lines[0] = f"{name} Records (last {days} days):"
         for row in rows:
-            date_, value, unit, note = row
-            line = f"  {date_}: {value} {unit or ''}"
+            datetime_str, value, unit, note = row
+            line = f"  {datetime_str}: {value} {unit or ''}"
             if note:
                 line += f" ({note})"
             output_lines.append(line)
     else:
         for row in rows:
-            date_, type_, value, unit, note = row
+            datetime_str, type_, value, unit, note = row
             name = METRIC_NAMES.get(type_, type_)
-            line = f"  {date_} [{name}]: {value} {unit or ''}"
+            line = f"  {datetime_str} [{name}]: {value} {unit or ''}"
             if note:
                 line += f" ({note})"
             output_lines.append(line)
@@ -161,27 +161,27 @@ def query_health(
 
     # Standard query
     logger.info("Querying health records (metric=%s, days=%d)", metric_type, days)
-    start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    start_datetime = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
     if metric_type:
         rows = db.fetchall(
             """
-            SELECT date, value, unit, note
+            SELECT datetime, value, unit, note
             FROM health
-            WHERE metric_type = ? AND date >= ?
-            ORDER BY date DESC
+            WHERE metric_type = ? AND datetime >= ?
+            ORDER BY datetime DESC
             """,
-            (metric_type, start_date),
+            (metric_type, start_datetime),
         )
     else:
         rows = db.fetchall(
             """
-            SELECT date, metric_type, value, unit, note
+            SELECT datetime, metric_type, value, unit, note
             FROM health
-            WHERE date >= ?
-            ORDER BY date DESC, metric_type
+            WHERE datetime >= ?
+            ORDER BY datetime DESC, metric_type
             """,
-            (start_date,),
+            (start_datetime,),
         )
 
     return _format_health_rows(rows, metric_type, days)

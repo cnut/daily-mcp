@@ -1,5 +1,5 @@
 """Tools module for daily-mcp."""
 
-from daily_mcp.tools import daily_log, finance, health, todo
+from daily_mcp.tools import diary, finance, health, todo
 
-__all__ = ["daily_log", "finance", "health", "todo"]
+__all__ = ["diary", "finance", "health", "todo"]

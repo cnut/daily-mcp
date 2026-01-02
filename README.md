@@ -1,34 +1,136 @@
-# Introduction
+# Daily MCP
 
-This is a simple mcp server to record daily life in LLM way.
+> Local Notebook + LLM + Data Visualization
 
-# Function
+一个面向个人的 MCP (Model Context Protocol) 服务器，让你通过自然语言记录和管理日常生活。可嵌入 Claude Desktop 等 AI Agent，用对话的方式轻松记录财务、待办、健康和日常点滴。
 
-- [ ] only login in local env
-- [ ] internal built-in schema, such (finance, health, todo task, daily log)
+## ✨ 特性
 
-## login in local env
+- **自然语言交互** - 通过 AI Agent 用日常对话记录生活，无需复杂操作
+- **本地优先** - 数据存储在本地 (markdown文件/SQLite/DuckDB)，隐私安全有保障
+- **SQL 查询** - 支持灵活的 SQL 查询，满足复杂数据分析需求
+- **数据可视化** - 内置图表和报表功能，直观展示财务趋势、健康指标等
+- **多维度记录** - 财务/股票、待办任务、健康数据、日常日志一站式管理
 
-nowadays, we want to keep the server as simple as possible, so we only support login in local env, this means:
-- use local files to store state,
-- use embedded database (such as SQLLite) to store data.
+## 🎯 核心功能
 
-## internal built-in schema
+### 💰 财务管理 (Finance)
 
-## finance
+记录日常收支、投资和股票交易信息。
 
-this mcp server will store daily income, cost and the detailed information.
+**功能：**
+- 记录收入/支出，支持分类和备注
+- 股票买卖记录与持仓追踪
+- 支持 SQL 查询历史数据
+- 图表展示：月度收支趋势、支出分类占比、投资收益曲线
 
-## todo
+**示例对话：**
+```
+用户：今天午餐花了 35 元，晚上买了本书 68 元
+用户：买入 500 股腾讯，成本价 380
+用户：查一下这个月的餐饮支出
+用户：画一个最近三个月的支出趋势图
+```
 
-this mcp server will also support creating or finishing the todo,
-during everyday 10:00 or 8:00, the todo message is popped the agent side to remind the user.
+### ✅ 待办任务 (Todo)
 
-## health
+管理日常任务，支持主题分组和完成情况追踪。
 
-this mcp server will record the user's health status, such as blood pressure, blood sugar, heart rate, etc.
+**功能：**
+- 创建/完成/删除待办事项
+- 按主题（项目）分组管理
+- 定时提醒（每日 10:00 推送未完成任务）, 支持自定义提醒时间
+- 按主题查看完成率统计
 
-## daily log
+**示例对话：**
+```
+用户：添加一个待办：周五前完成项目报告，主题是工作
+用户：完成了"买牛奶"这个任务
+用户：看看"健身"主题下还有哪些没完成的
+用户：这周完成了多少任务？
+```
 
-this mcp server will record the user's daily log, such as what did you eat, what did you do, etc.
-this daily log can be used as the raw data of other schema, it's the raw bla bla words inputted by the user from agent side. 
+### 🏥 健康记录 (Health)
+
+追踪个人健康指标，建立长期健康档案。
+
+**功能：**
+- 记录血压、血糖、心率、体重等指标
+- 运动和睡眠记录
+- 趋势图表展示健康变化
+- 异常值提醒
+
+**示例对话：**
+```
+用户：今天血压 125/82，心率 72
+用户：昨晚睡了 7 小时，睡眠质量还行
+用户：画一下最近一个月的血压变化图
+```
+
+### 📝 日常日志 (Daily Log)
+
+自由记录生活点滴，作为其他模块的原始数据来源。
+
+**功能：**
+- 自由文本记录，支持 AI 自动解析提取结构化信息
+- 可关联到财务、健康等其他模块
+- 支持按日期/关键词检索
+
+**示例对话：**
+```
+用户：今天早上跑了 5 公里，感觉不错，中午和老王吃了顿火锅花了 150
+```
+> AI 自动解析：运动记录（跑步 5km）+ 餐饮支出（150 元）
+
+## 🏗️ 技术架构
+
+```
+┌──────────────────────────────────────────┐
+│           AI Agent (Claude Desktop)      │
+└─────────────────┬────────────────────────┘
+                  │ MCP Protocol
+┌─────────────────▼────────────────────────┐
+│              Daily MCP Server            │
+├──────────────────────────────────────────┤
+│  Tools: record_finance, add_todo, ...    │
+│  Resources: 数据查询、报表生成              │
+│  Prompts: 数据分析、趋势解读                │
+├──────────────────────────────────────────┤
+│              Local files or DB           │
+│  (finance, todo, health, daily_log)      │
+└──────────────────────────────────────────┘
+```
+
+## 📦 安装
+
+bla bla
+
+## ⚙️ 配置
+
+bla bla
+
+## 🗂️ 数据存储
+
+原始的 daily 记录，适合以一定格式的 markdown 文件存储，方便本地查看和编辑。
+涉及到结构化的数据，如果有报表和查询需求，可以用 duckdb 或者 sqlite 来存储。
+
+## 🛣️ Roadmap
+
+- [ ] 基础框架搭建
+- [ ] 财务记录模块
+- [ ] 待办任务模块
+- [ ] 健康记录模块
+- [ ] 日常日志模块
+- [ ] SQL 查询接口
+- [ ] 数据可视化（图表生成）
+- [ ] 定时提醒功能
+- [ ] 数据导出（CSV/JSON）
+- [ ] 多语言支持
+
+## 📄 License
+
+MIT
+
+## 🤝 Contributing
+
+欢迎提交 Issue 和 PR！

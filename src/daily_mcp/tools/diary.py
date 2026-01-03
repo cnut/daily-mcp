@@ -1,8 +1,27 @@
-"""Diary tools for free-form journaling. Stored as JSON files."""
+"""Diary tools for free-form journaling. Stored as Markdown files.
+
+File structure: diary_dir/YYYY/MM/YYYY-MM-DD.md
+
+Markdown format:
+---
+date: 2026-01-02
+tags: [tag1, tag2]
+---
+
+## 08:30
+
+Content here...
+
+#tag1 #tag2
+
+## 12:00
+
+Another entry...
+"""
 
 from __future__ import annotations
 
-import json
+import re
 from datetime import datetime, timedelta
 from pathlib import Path  # noqa: TC003 - used at runtime for function signatures
 from typing import Any
@@ -13,25 +32,147 @@ logger = get_logger("tools.diary")
 
 
 def _get_diary_file(diary_dir: Path, date: str) -> Path:
-    """Get diary file path for a specific date. Format: YYYY-MM-DD.json"""
-    return diary_dir / f"{date}.json"
+    """Get diary file path for a specific date. Format: YYYY/MM/YYYY-MM-DD.md"""
+    year, month, _ = date.split("-")
+    return diary_dir / year / month / f"{date}.md"
+
+
+def _parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
+    """Parse YAML frontmatter from markdown content."""
+    if not content.startswith("---"):
+        return {}, content
+
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return {}, content
+
+    frontmatter_str = parts[1].strip()
+    body = parts[2].strip()
+
+    # Simple YAML parsing for our use case
+    frontmatter: dict[str, Any] = {}
+    for line in frontmatter_str.split("\n"):
+        if ":" in line:
+            key, value = line.split(":", 1)
+            key = key.strip()
+            value = value.strip()
+            # Parse tags list
+            if key == "tags" and value.startswith("["):
+                tags = re.findall(r"[\w\u4e00-\u9fff-]+", value)
+                frontmatter[key] = tags
+            else:
+                frontmatter[key] = value
+
+    return frontmatter, body
+
+
+def _build_frontmatter(date: str, tags: list[str]) -> str:
+    """Build YAML frontmatter string."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    tags_str = ", ".join(tags) if tags else ""
+    return f"""---
+date: {date}
+modification_date: {now}
+tags: [{tags_str}]
+---"""
+
+
+def _parse_entries(body: str, file_date: str) -> list[dict[str, Any]]:
+    """Parse markdown body into diary entries."""
+    entries: list[dict[str, Any]] = []
+
+    # Split by ## HH:MM headers
+    pattern = r"^## (\d{2}:\d{2})(?::(\d{2}))?\s*$"
+    sections = re.split(pattern, body, flags=re.MULTILINE)
+
+    # sections[0] is content before first header (usually empty)
+    # Then groups of (hour:minute, seconds_or_none, content)
+    i = 1
+    while i < len(sections):
+        time_hm = sections[i]
+        time_ss = sections[i + 1] if i + 1 < len(sections) else None
+        content_block = sections[i + 2] if i + 2 < len(sections) else ""
+        i += 3
+
+        time_str = f"{time_hm}:{time_ss}" if time_ss else f"{time_hm}:00"
+        content_block = content_block.strip()
+
+        if not content_block:
+            continue
+
+        # Extract inline tags from content
+        inline_tags = re.findall(r"#([\w\u4e00-\u9fff-]+)", content_block)
+        # Remove inline tags from content for clean display
+        clean_content = re.sub(r"\s*#[\w\u4e00-\u9fff-]+", "", content_block).strip()
+
+        entries.append(
+            {
+                "datetime": f"{file_date} {time_str}",
+                "content": clean_content,
+                "tags": inline_tags,
+            }
+        )
+
+    return entries
 
 
 def _load_diary(diary_dir: Path, date: str) -> list[dict[str, Any]]:
-    """Load diary entries for a specific date."""
+    """Load diary entries for a specific date from markdown file."""
     diary_file = _get_diary_file(diary_dir, date)
+    if not diary_file.exists():
+        return []
+
+    content = diary_file.read_text(encoding="utf-8")
+    _, body = _parse_frontmatter(content)
+    return _parse_entries(body, date)
+
+
+def _collect_all_tags(diary_dir: Path, date: str, new_tags: list[str] | None) -> list[str]:
+    """Collect all unique tags from existing entries and new tags."""
+    existing_entries = _load_diary(diary_dir, date)
+    all_tags: set[str] = set(new_tags or [])
+
+    for entry in existing_entries:
+        all_tags.update(entry.get("tags", []))
+
+    return sorted(all_tags)
+
+
+def _append_entry_to_markdown(
+    diary_dir: Path,
+    date: str,
+    time_str: str,
+    content: str,
+    tags: list[str] | None,
+) -> None:
+    """Append a new entry to the markdown diary file."""
+    diary_file = _get_diary_file(diary_dir, date)
+    diary_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Build inline tags string
+    inline_tags = " ".join(f"#{tag}" for tag in tags) if tags else ""
+    entry_block = f"\n\n## {time_str}\n\n{content}"
+    if inline_tags:
+        entry_block += f"\n\n{inline_tags}"
+
     if diary_file.exists():
-        with diary_file.open(encoding="utf-8") as f:
-            data: list[dict[str, Any]] = json.load(f)
-            return data
-    return []
+        # Read existing content and update frontmatter
+        existing_content = diary_file.read_text(encoding="utf-8")
+        _, body = _parse_frontmatter(existing_content)
 
+        # Collect all tags
+        all_tags = _collect_all_tags(diary_dir, date, tags)
 
-def _save_diary(diary_dir: Path, date: str, entries: list[dict[str, Any]]) -> None:
-    """Save diary entries for a specific date."""
-    diary_file = _get_diary_file(diary_dir, date)
-    with diary_file.open("w", encoding="utf-8") as f:
-        json.dump(entries, f, ensure_ascii=False, indent=2)
+        # Rebuild file with updated frontmatter
+        new_frontmatter = _build_frontmatter(date, all_tags)
+        new_content = f"{new_frontmatter}\n{body}{entry_block}"
+    else:
+        # Create new file
+        all_tags = list(tags) if tags else []
+        new_frontmatter = _build_frontmatter(date, all_tags)
+        new_content = f"{new_frontmatter}{entry_block}"
+
+    diary_file.write_text(new_content, encoding="utf-8")
 
 
 def add_diary(
@@ -52,33 +193,24 @@ def add_diary(
     Returns:
         Confirmation message
     """
-    now = datetime.now()
-
     if datetime_str:
-        # Parse provided datetime
         try:
             entry_datetime = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             return f"Invalid datetime format: {datetime_str}. Use YYYY-MM-DD HH:MM:SS"
     else:
-        entry_datetime = now
+        entry_datetime = datetime.now()
 
     diary_date = entry_datetime.strftime("%Y-%m-%d")
+    time_str = entry_datetime.strftime("%H:%M")
+
     logger.info("Adding diary entry for %s", entry_datetime.strftime("%Y-%m-%d %H:%M:%S"))
 
-    entries = _load_diary(diary_dir, diary_date)
-    entry: dict[str, Any] = {
-        "content": content,
-        "datetime": entry_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-        "created_at": now.isoformat(),
-    }
-    if tags:
-        entry["tags"] = tags
+    _append_entry_to_markdown(diary_dir, diary_date, time_str, content, tags)
 
-    entries.append(entry)
-    _save_diary(diary_dir, diary_date, entries)
+    diary_file = _get_diary_file(diary_dir, diary_date)
+    logger.debug("Diary saved to %s", diary_file)
 
-    logger.debug("Diary saved to %s", _get_diary_file(diary_dir, diary_date))
     tag_info = f" [tags: {', '.join(tags)}]" if tags else ""
     return f"Diary entry added for {entry_datetime.strftime('%Y-%m-%d %H:%M:%S')}{tag_info}"
 
@@ -113,7 +245,6 @@ def _parse_datetime_range(
 
 def _entry_matches_filter(
     entry: dict[str, Any],
-    file_date: str,
     start_dt: datetime,
     end_dt: datetime,
     keyword: str | None,
@@ -121,12 +252,12 @@ def _entry_matches_filter(
 ) -> bool:
     """Check if an entry matches the search filters."""
     # Check datetime range
-    entry_dt_str = entry.get("datetime", entry.get("time", ""))
+    entry_dt_str = entry.get("datetime", "")
     if entry_dt_str:
         try:
             entry_dt = datetime.strptime(entry_dt_str, "%Y-%m-%d %H:%M:%S")
         except ValueError:
-            entry_dt = datetime.strptime(f"{file_date} {entry_dt_str}", "%Y-%m-%d %H:%M:%S")
+            return False
 
         if not (start_dt <= entry_dt <= end_dt):
             return False
@@ -159,7 +290,7 @@ def _format_search_results(results: list[tuple[str, dict[str, Any]]]) -> str:
             output_lines.append(f"Date: {file_date}")
             current_date = file_date
 
-        dt_str = entry.get("datetime", entry.get("time", ""))
+        dt_str = entry.get("datetime", "")
         content = entry["content"]
         tags_list = entry.get("tags", [])
 
@@ -173,6 +304,15 @@ def _format_search_results(results: list[tuple[str, dict[str, Any]]]) -> str:
             output_lines.append(f"  -{tag_str} {display_content}")
 
     return "\n".join(output_lines)
+
+
+def _iter_diary_files(diary_dir: Path, start_date: str, end_date: str):
+    """Iterate over diary files in date range."""
+    # Search in YYYY/MM/YYYY-MM-DD.md structure
+    for md_file in sorted(diary_dir.rglob("*.md"), reverse=True):
+        file_date = md_file.stem  # YYYY-MM-DD
+        if start_date <= file_date <= end_date:
+            yield file_date, md_file
 
 
 def search_diary(
@@ -209,13 +349,11 @@ def search_diary(
 
     # Find matching diary entries
     results: list[tuple[str, dict[str, Any]]] = []
-    for diary_file in sorted(diary_dir.glob("*.json"), reverse=True):
-        file_date = diary_file.stem
-        if start_date <= file_date <= end_date:
-            entries = _load_diary(diary_dir, file_date)
-            for entry in entries:
-                if _entry_matches_filter(entry, file_date, start_dt, end_dt, keyword, tag):
-                    results.append((file_date, entry))
+    for file_date, _ in _iter_diary_files(diary_dir, start_date, end_date):
+        entries = _load_diary(diary_dir, file_date)
+        for entry in entries:
+            if _entry_matches_filter(entry, start_dt, end_dt, keyword, tag):
+                results.append((file_date, entry))
 
     logger.info("Found %d matching diary entries", len(results))
     return _format_search_results(results)

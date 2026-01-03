@@ -82,7 +82,7 @@ def _format_diary_section(diary_path: Path, target_date: str) -> list[str]:
     for entry in entries[:3]:  # Show first 3 entries
         content = entry["content"]
         preview = content[:50] + "..." if len(content) > 50 else content
-        datetime_str = entry.get("datetime", entry.get("time", ""))
+        datetime_str = entry.get("datetime", "")
         # Show only time part if datetime contains date
         display_time = datetime_str.split(" ")[-1] if " " in datetime_str else datetime_str
         lines.append(f"  [{display_time}] {preview}")
@@ -272,8 +272,9 @@ def _build_weekly_health(db: Database, start_str: str, end_str: str) -> list[str
 def _build_weekly_diary(diary_path: Path, start_str: str, end_str: str) -> list[str]:
     """Build weekly diary section."""
     entry_count = 0
-    for diary_file in diary_path.glob("*.json"):
-        file_date = diary_file.stem
+    # Search in YYYY/MM/YYYY-MM-DD.md structure
+    for md_file in diary_path.rglob("*.md"):
+        file_date = md_file.stem  # YYYY-MM-DD
         if start_str <= file_date <= end_str:
             entries = diary._load_diary(diary_path, file_date)
             entry_count += len(entries)

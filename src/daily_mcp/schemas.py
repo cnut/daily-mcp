@@ -33,6 +33,9 @@ class DailyTools(str, Enum):
     ADD_DIARY = "add_diary"
     SEARCH_DIARY = "search_diary"
 
+    # Time
+    GET_CURRENT_TIME = "get_current_time"
+
 
 # =============================================================================
 # Finance Schemas
@@ -213,3 +216,18 @@ class SearchDiary(BaseModel):
         description="End datetime in YYYY-MM-DD HH:MM:SS format (defaults to now)",
         pattern=r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$",
     )
+
+
+# =============================================================================
+# Time Schemas
+# =============================================================================
+
+
+class GetCurrentTime(BaseModel):
+    """Schema for getting current time information.
+
+    This tool helps agents understand relative time expressions like
+    'yesterday at 3pm', 'just now', 'last week', etc.
+    """
+
+    pass  # No parameters needed - returns current time info

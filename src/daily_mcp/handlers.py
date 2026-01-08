@@ -25,6 +25,7 @@ from daily_mcp.schemas import (
     AddTodo,
     CompleteTodo,
     DailyTools,
+    GetCurrentTime,
     ListTodos,
     QueryFinance,
     QueryHealth,
@@ -34,6 +35,7 @@ from daily_mcp.schemas import (
     SearchDiary,
 )
 from daily_mcp.tools import diary, finance, health, todo
+from daily_mcp.tools.time_utils import get_current_time
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -103,6 +105,15 @@ def register_tools(server: Server, db: Database, diary_path: Path) -> None:
                 description="Search diary entries by keyword, tag, or datetime range.",
                 inputSchema=SearchDiary.model_json_schema(),
             ),
+            Tool(
+                name=DailyTools.GET_CURRENT_TIME,
+                description=(
+                    "Get current time information. Use this to convert relative time "
+                    "expressions like 'yesterday 3pm', 'just now', 'this morning' to "
+                    "absolute datetime values."
+                ),
+                inputSchema=GetCurrentTime.model_json_schema(),
+            ),
         ]
 
     @server.call_tool()
@@ -168,6 +179,7 @@ def _dispatch_tool(db: Database, diary_path: Path, name: str, arguments: dict[st
             start_datetime=arguments.get("start_datetime"),
             end_datetime=arguments.get("end_datetime"),
         ),
+        DailyTools.GET_CURRENT_TIME: lambda: get_current_time(),
     }
 
     handler = handlers.get(name)
